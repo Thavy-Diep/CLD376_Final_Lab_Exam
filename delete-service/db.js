@@ -1,33 +1,39 @@
-const mysql = require('mysql2/promise');
+const { MongoClient } = require('mongodb');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || 'root123',
-  database: process.env.DB_NAME || 'college',
-  waitForConnections: true,
-  connectionLimit: 10,
-});
-
-// Retry until MySQL is ready (important in Kubernetes)
-async function initDb(retries = 30) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await pool.query(`CREATE TABLE IF NOT EXISTS students (
-        Student_id INT AUTO_INCREMENT PRIMARY KEY,
-        Student_name VARCHAR(100) NOT NULL,
-        student_mobile VARCHAR(20) NOT NULL,
-        student_email VARCHAR(100) NOT NULL UNIQUE,
-        student_password VARCHAR(255) NOT NULL
-      )`);
-      console.log('Database ready');
-      return;
-    } catch (e) {
-      console.log(`Waiting for database... (${i + 1}/${retries})`);
-      await new Promise((r) => setTimeout(r, 3000));
-    }
-  }
-  throw new Error('Could not connect to database');
+const uri = process.env.MONGODB_URI;
+if (!uri) {
+  throw new Error('MONGODB_URI environment variable is required');
 }
 
-module.exports = { pool, initDb };
+const client = new MongoClient(uri);
+const databaseName = process.env.MONGODB_DB_NAME || 'college';
+
+async function initDb(retries = 30) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await client.connect();
+      const database = client.db(databaseName);
+      const collection = database.collection('students');
+      await collection.createIndex({ student_email: 1 }, { unique: true });
+      await collection.createIndex({ Student_id: 1 }, { unique: true });
+      console.log('MongoDB Atlas ready');
+      return;
+    } catch (error) {
+      lastError = error;
+      console.log(`Waiting for MongoDB Atlas... (${attempt}/${retries})`);
+      if (attempt < retries) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+function getStudentsCollection() {
+  return client.db(databaseName).collection('students');
+}
+
+module.exports = { getStudentsCollection, initDb };

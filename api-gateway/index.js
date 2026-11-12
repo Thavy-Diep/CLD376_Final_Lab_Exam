@@ -34,6 +34,7 @@ app.get('/students/:id', toRegistration);
 app.put('/students/:id', toRegistration);
 
 // Delete microservice
-app.delete('/students/:id', toDelete);
+app.delete('/students/name/:name', toDelete);
+app.delete('/students/:idOrName', toDelete);
 
 app.listen(3000, () => console.log('API Gateway running on port 3000'));
