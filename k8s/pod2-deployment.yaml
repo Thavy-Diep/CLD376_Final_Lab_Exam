@@ -1,0 +1,30 @@
+# POD 2: delete-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod2-delete
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pod2
+  template:
+    metadata:
+      labels:
+        app: pod2
+    spec:
+      containers:
+        - name: delete-service
+          image: delete-service:1.0
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3002
+          env:
+            - name: DB_HOST
+              value: "mysql"
+            - name: DB_USER
+              value: "root"
+            - name: DB_PASSWORD
+              value: "root123"
+            - name: DB_NAME
+              value: "college"
